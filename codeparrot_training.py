@@ -39,7 +39,7 @@ class ConstantLengthDataset(IterableDataset):
         infinite=False,
         seq_length=1024,
         num_of_sequences=1024,
-        chars_per_token=3.6,
+        chars_per_token=5,
         tokenized=False,
     ):
         self.tokenizer = tokenizer
