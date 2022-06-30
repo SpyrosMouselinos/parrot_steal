@@ -26,7 +26,10 @@ iter_dataset = iter(dataset)
 
 
 # Training and saving
-new_tokenizer = tokenizer.train_new_from_iterator(
-    batch_iterator(), vocab_size=args.vocab_size, initial_alphabet=base_vocab
-)
+# new_tokenizer = tokenizer.train_new_from_iterator(
+#     batch_iterator(), vocab_size=args.vocab_size, initial_alphabet=base_vocab
+# )
+
+# Mog it
+new_tokenizer = tokenizer
 new_tokenizer.save_pretrained(args.tokenizer_name, push_to_hub=args.push_to_hub)
