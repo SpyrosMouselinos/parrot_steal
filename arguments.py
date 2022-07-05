@@ -12,7 +12,7 @@ class TrainingArguments:
         default="BlazeLlama/piwpaw_medium", metadata={"help": "Model name or path of model to be trained."}
     )
     save_dir: Optional[str] = field(
-        default="./", metadata={"help": "Save dir where model repo is cloned and models updates are saved to."}
+        default="./models", metadata={"help": "Save dir where model repo is cloned and models updates are saved to."}
     )
     dataset_name_train: Optional[str] = field(
         default="lvwerra/codeparrot-clean-train", metadata={"help": "Name or path of training dataset."}
