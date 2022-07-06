@@ -294,7 +294,12 @@ for step, batch in enumerate(train_dataloader, start=1):
     if args.resume_from_checkpoint and step < resume_step:
         continue  # we need to skip steps until we reach the resumed step
     loss = model(batch, labels=batch, use_cache=False).loss
-    print(loss, flush=True)
+    if accelerator.is_main_process:
+        print("Main_process\n", flush=True)
+        print(loss, flush=True)
+    else:
+        print("Secondary_process\n", flush=True)
+        print(loss, flush=True)
     avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
     loss_tracking += avg_loss.item() / args.gradient_accumulation_steps
     loss = loss / args.gradient_accumulation_steps
