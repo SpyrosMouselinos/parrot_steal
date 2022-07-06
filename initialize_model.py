@@ -1,3 +1,4 @@
+import torch
 from arguments import InitializationArguments
 from transformers import GPT2Config, AutoModelForCausalLM, AutoTokenizer, HfArgumentParser
 
@@ -25,7 +26,7 @@ config_kwargs = {
 config = GPT2Config(**config_kwargs)
 
 # Initialize new model with config
-model = AutoModelForCausalLM.from_config(config)
+model = AutoModelForCausalLM.from_config(config, torch_dtype=torch.float16)
 
 # Save model to the hub
 model.save_pretrained(args.model_name, push_to_hub=args.push_to_hub)
