@@ -264,14 +264,12 @@ completed_steps = 0
 t_start = time.time()
 loss_tracking = 0
 for step, batch in enumerate(train_dataloader, start=1):
-    print(f"[DEBUG] Step: {step}\n")
     if args.resume_from_checkpoint and step < resume_step:
         continue  # we need to skip steps until we reach the resumed step
     loss = model(batch, labels=batch, use_cache=False).loss
     avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
     loss_tracking += avg_loss.item() / args.gradient_accumulation_steps
     loss = loss / args.gradient_accumulation_steps
-    print(f"[DEBUG] step % args.gradient_accumulation_steps: {step % args.gradient_accumulation_steps}\n")
     if step % args.gradient_accumulation_steps != 0:
         # Prevent backward from doing gradient all_reduce in every step
         if accelerator.distributed_type == DistributedType.MULTI_GPU:
