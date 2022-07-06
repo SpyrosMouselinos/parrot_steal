@@ -41,8 +41,7 @@ class ConstantLengthDataset(IterableDataset):
             dataset,
             infinite=False,
             seq_length=1024,
-            num_of_sequences=1024,
-            chars_per_token=5,
+            num_of_sequences=5,
             tokenized=False,
     ):
         self.tokenizer = tokenizer
@@ -58,7 +57,7 @@ class ConstantLengthDataset(IterableDataset):
             self.max_buffer_size = seq_length * num_of_sequences
             self.content_field = "input_ids"
         else:
-            self.max_buffer_size = seq_length * chars_per_token * num_of_sequences
+            self.max_buffer_size = seq_length * num_of_sequences
             self.content_field = "content"
 
     def __iter__(self):
@@ -97,18 +96,6 @@ class ConstantLengthDataset(IterableDataset):
         return ShufflerIterDataPipe(self, buffer_size=buffer_size)
 
 
-class DummyDataset(IterableDataset):
-    def __init__(self):
-        return
-
-    def __iter__(self):
-        rand = random.randint(2, 1000)
-        yield torch.tensor([rand] * 1024)
-
-    def shuffle(self, buffer_size=1000):
-        return ShufflerIterDataPipe(self, buffer_size=buffer_size)
-
-
 def setup_logging(args):
     project_name = args.model_ckpt.split("/")[-1]
     logger = logging.getLogger(__name__)
@@ -135,22 +122,16 @@ def setup_logging(args):
     return logger, run_name
 
 
-def create_dataloaders(args, dummy=False):
-    if dummy:
-        train_dataset = DummyDataset().shuffle(buffer_size=args.shuffle_buffer)
-        valid_dataset = DummyDataset().shuffle(buffer_size=args.shuffle_buffer)
-    else:
-        ds_kwargs = {"streaming": True}
-        train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
-        train_data = train_data.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
-        valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
-        train_dataset = ConstantLengthDataset(
-            tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized
-        )
-        valid_dataset = ConstantLengthDataset(
-            tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized
-        )
-        train_dataset = train_dataset.shuffle(buffer_size=args.shuffle_buffer)
+def create_dataloaders(args):
+    ds_kwargs = {"streaming": True}
+    train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
+    valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
+    train_dataset = ConstantLengthDataset(
+        tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized
+    )
+    valid_dataset = ConstantLengthDataset(
+        tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized
+    )
     train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
     eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
     return train_dataloader, eval_dataloader
@@ -209,7 +190,6 @@ def evaluate(args):
     return loss.item(), perplexity.item()
 
 
-
 # Settings
 parser = HfArgumentParser(TrainingArguments)
 args = parser.parse_args()
@@ -243,7 +223,7 @@ tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
 # Load dataset and dataloader
 if accelerator.is_main_process:
     print("Creating DLoaders", flush=True)
-train_dataloader, eval_dataloader = create_dataloaders(args, dummy=True)
+train_dataloader, eval_dataloader = create_dataloaders(args)
 
 # Prepare the optimizer and learning rate scheduler
 optimizer = AdamW(get_grouped_params(model, args), lr=args.learning_rate)
@@ -260,14 +240,13 @@ def get_lr():
     return optimizer.param_groups[0]["lr"]
 
 
-if accelerator.is_main_process:
-    print("Before prepare", flush=True)
+# Train model
+model.train()
 # Prepare everything with our `accelerator`.
 model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
     model, optimizer, train_dataloader, eval_dataloader
 )
-if accelerator.is_main_process:
-    print("After prepare", flush=True)
+
 # load in the weights and states from a previous save
 if args.resume_from_checkpoint:
     if args.resume_from_checkpoint is not None or args.resume_from_checkpoint != "":
@@ -283,12 +262,14 @@ if args.resume_from_checkpoint:
     training_difference = os.path.splitext(path)[0]
     resume_step = int(training_difference.replace("step_", ""))
 
-# Train model
-model.train()
 completed_steps = 0
 t_start = time.time()
 loss_tracking = 0
 for step, batch in enumerate(train_dataloader, start=1):
+    if accelerator.is_main_process:
+        print("Main_process Load\n", flush=True)
+    else:
+        print("Secondary_process Load\n", flush=True)
     if args.resume_from_checkpoint and step < resume_step:
         continue  # we need to skip steps until we reach the resumed step
     loss = model(batch, labels=batch, use_cache=False).loss
