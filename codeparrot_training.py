@@ -209,8 +209,6 @@ def evaluate(args):
     return loss.item(), perplexity.item()
 
 
-os.environ["MASTER_ADDR"] = "localhost"
-os.environ["MASTER_PORT"] = "29501"
 
 # Settings
 parser = HfArgumentParser(TrainingArguments)
