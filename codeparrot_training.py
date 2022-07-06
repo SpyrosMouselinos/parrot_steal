@@ -205,7 +205,6 @@ set_seed(args.seed)
 # Clone model repository
 if accelerator.is_main_process:
     hf_repo = Repository(args.save_dir, clone_from=args.model_ckpt)
-
 # Logging
 logger, run_name = setup_logging(args)
 logger.info(accelerator.state)

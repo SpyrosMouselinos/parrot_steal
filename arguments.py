@@ -12,7 +12,7 @@ class TrainingArguments:
         default="BlazeLlama/piwpaw_medium", metadata={"help": "Model name or path of model to be trained."}
     )
     save_dir: Optional[str] = field(
-        default="./models", metadata={"help": "Save dir where model repo is cloned and models updates are saved to."}
+        default="./BlazeLlama/piwpaw_medium", metadata={"help": "Save dir where model repo is cloned and models updates are saved to."}
     )
     dataset_name_train: Optional[str] = field(
         default="lvwerra/codeparrot-clean-train", metadata={"help": "Name or path of training dataset."}
@@ -20,7 +20,7 @@ class TrainingArguments:
     dataset_name_valid: Optional[str] = field(
         default="lvwerra/codeparrot-clean-valid", metadata={"help": "Name or path of validation dataset."}
     )
-    train_batch_size: Optional[int] = field(default=12, metadata={"help": "Batch size for training."})
+    train_batch_size: Optional[int] = field(default=60, metadata={"help": "Batch size for training."})
     valid_batch_size: Optional[int] = field(default=12, metadata={"help": "Batch size for evaluation."})
     weight_decay: Optional[float] = field(default=0.1, metadata={"help": "Value of weight decay."})
     shuffle_buffer: Optional[int] = field(
@@ -32,7 +32,7 @@ class TrainingArguments:
         default=1000, metadata={"help": "Number of warmup steps in the learning rate schedule."}
     )
     gradient_accumulation_steps: Optional[int] = field(
-        default=22, metadata={"help": "Number of gradient accumulation steps."}
+        default=6, metadata={"help": "Number of gradient accumulation steps."}
     )
     gradient_checkpointing: Optional[bool] = field(
         default=True, metadata={"help": "Use gradient checkpointing to reduce memory footprint."}
