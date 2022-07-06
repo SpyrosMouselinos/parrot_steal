@@ -205,6 +205,7 @@ set_seed(args.seed)
 # Clone model repository
 if accelerator.is_main_process:
     hf_repo = Repository(args.save_dir, clone_from=args.model_ckpt)
+
 # Logging
 logger, run_name = setup_logging(args)
 logger.info(accelerator.state)
@@ -214,7 +215,7 @@ if accelerator.is_main_process:
     hf_repo.git_checkout(run_name, create_branch_ok=True)
 
 # Load model and tokenizer
-model = AutoModelForCausalLM.from_pretrained(args.save_dir, torch_dtype=torch.float16)
+model = AutoModelForCausalLM.from_pretrained(args.save_dir)
 if args.gradient_checkpointing:
     model.gradient_checkpointing_enable()
 tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
@@ -266,6 +267,7 @@ for step, batch in enumerate(train_dataloader, start=1):
     if args.resume_from_checkpoint and step < resume_step:
         continue  # we need to skip steps until we reach the resumed step
     loss = model(batch, labels=batch, use_cache=False).loss
+    print(loss)
     avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
     loss_tracking += avg_loss.item() / args.gradient_accumulation_steps
     loss = loss / args.gradient_accumulation_steps

@@ -26,7 +26,7 @@ config_kwargs = {
 config = GPT2Config(**config_kwargs)
 
 # Initialize new model with config
-model = AutoModelForCausalLM.from_config(config, torch_dtype=torch.float16)
+model = AutoModelForCausalLM.from_config(config)
 
 # Save model to the hub
 model.save_pretrained(args.model_name, push_to_hub=args.push_to_hub)
