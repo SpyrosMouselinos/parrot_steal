@@ -41,8 +41,9 @@ class ConstantLengthDataset(IterableDataset):
             dataset,
             infinite=False,
             seq_length=1024,
-            num_of_sequences=5,
+            num_of_sequences=512,
             tokenized=False,
+            shuffle_buffer=False
     ):
         self.tokenizer = tokenizer
         self.concat_token_id = tokenizer.bos_token_id
@@ -52,6 +53,7 @@ class ConstantLengthDataset(IterableDataset):
         self.infinite = infinite
         self.current_size = 0
         self.tokenized = tokenized
+        self.shuffle_buffer = shuffle_buffer
 
         if self.tokenized:
             self.max_buffer_size = seq_length * num_of_sequences
@@ -84,6 +86,8 @@ class ConstantLengthDataset(IterableDataset):
             else:
                 tokenized_inputs = self.tokenizer(buffer, truncation=False)["input_ids"]
             all_token_ids = []
+            if self.shuffle_buffer:
+                random.shuffle(tokenized_inputs)
             for tokenized_input in tokenized_inputs:
                 all_token_ids.extend(tokenized_input + [self.concat_token_id])
             for i in range(0, len(all_token_ids), self.seq_length):
@@ -92,8 +96,6 @@ class ConstantLengthDataset(IterableDataset):
                     self.current_size += 1
                     yield torch.tensor(input_ids)
 
-    def shuffle(self, buffer_size=1000):
-        return ShufflerIterDataPipe(self, buffer_size=buffer_size)
 
 
 def setup_logging(args):
@@ -127,10 +129,10 @@ def create_dataloaders(args):
     train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
     valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
     train_dataset = ConstantLengthDataset(
-        tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized
+        tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=True
     )
     valid_dataset = ConstantLengthDataset(
-        tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized
+        tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=False
     )
     train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
     eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
@@ -202,6 +204,7 @@ args = Namespace(**vars(args), **acc_state)
 samples_per_step = accelerator.state.num_processes * args.train_batch_size
 set_seed(args.seed)
 
+
 # Clone model repository
 if accelerator.is_main_process:
     hf_repo = Repository(args.save_dir, clone_from=args.model_ckpt)
@@ -266,19 +269,9 @@ completed_steps = 0
 t_start = time.time()
 loss_tracking = 0
 for step, batch in enumerate(train_dataloader, start=1):
-    if accelerator.is_main_process:
-        print("Main_process Load\n", flush=True)
-    else:
-        print("Secondary_process Load\n", flush=True)
     if args.resume_from_checkpoint and step < resume_step:
         continue  # we need to skip steps until we reach the resumed step
     loss = model(batch, labels=batch, use_cache=False).loss
-    if accelerator.is_main_process:
-        print("Main_process\n", flush=True)
-        print(loss, flush=True)
-    else:
-        print("Secondary_process\n", flush=True)
-        print(loss, flush=True)
     avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
     loss_tracking += avg_loss.item() / args.gradient_accumulation_steps
     loss = loss / args.gradient_accumulation_steps
