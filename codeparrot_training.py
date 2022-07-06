@@ -102,7 +102,7 @@ class DummyDataset(IterableDataset):
         return
 
     def __iter__(self):
-        rand = random.randint(2,1000)
+        rand = random.randint(2, 1000)
         yield torch.tensor([rand] * 1024)
 
     def shuffle(self, buffer_size=1000):
@@ -243,6 +243,8 @@ if args.gradient_checkpointing:
 tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
 
 # Load dataset and dataloader
+if accelerator.is_main_process:
+    print("Creating DLoaders", flush=True)
 train_dataloader, eval_dataloader = create_dataloaders(args, dummy=True)
 
 # Prepare the optimizer and learning rate scheduler
@@ -260,12 +262,14 @@ def get_lr():
     return optimizer.param_groups[0]["lr"]
 
 
-print("Before prepare", flush=True)
+if accelerator.is_main_process:
+    print("Before prepare", flush=True)
 # Prepare everything with our `accelerator`.
 model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
     model, optimizer, train_dataloader, eval_dataloader
 )
-print("After prepare", flush=True)
+if accelerator.is_main_process:
+    print("After prepare", flush=True)
 # load in the weights and states from a previous save
 if args.resume_from_checkpoint:
     if args.resume_from_checkpoint is not None or args.resume_from_checkpoint != "":
