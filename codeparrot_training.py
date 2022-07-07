@@ -15,6 +15,7 @@ from torch.utils.data import IterableDataset
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.datapipes.iter.combinatorics import ShufflerIterDataPipe
 
+import shutil
 import transformers
 from accelerate import Accelerator, DistributedType
 from arguments import TrainingArguments
@@ -204,6 +205,25 @@ args = Namespace(**vars(args), **acc_state)
 samples_per_step = accelerator.state.num_processes * args.train_batch_size
 set_seed(args.seed)
 
+# Trick: Move out any step_checkpoints and move them back in
+possible_ckpts = os.listdir(args.save_dir)
+move = []
+for file_or_folder in possible_ckpts:
+    if 'step_' in file_or_folder and os.path.isdir(file_or_folder):
+        move.append(file_or_folder)
+
+# Move out
+for file in move:
+    shutil.move(args.save_dir + '/' + file, f'./{file}')
+
+# Clean
+to_be_del = os.listdir(args.save_dir)
+if len(to_be_del) > 0:
+    for file in to_be_del:
+        shutil.rmtree(args.save_dir + '/' + file)
+
+
+
 
 # Clone model repository
 if accelerator.is_main_process:
@@ -222,6 +242,10 @@ model = AutoModelForCausalLM.from_pretrained(args.save_dir, torch_dtype="auto")
 if args.gradient_checkpointing:
     model.gradient_checkpointing_enable()
 tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
+
+# Move ckpts_back_in
+for file in move:
+    shutil.move( f'./{file}', args.save_dir + '/' + file)
 
 # Load dataset and dataloader
 if accelerator.is_main_process:
