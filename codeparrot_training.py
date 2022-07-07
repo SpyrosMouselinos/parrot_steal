@@ -228,9 +228,11 @@ if accelerator.is_main_process:
 
 # Clone model repository
 if accelerator.is_main_process:
-    shutil.rmtree(f"{args.save_dir}/log")
     hf_repo = Repository(args.save_dir, clone_from=args.model_ckpt)
-    os.mkdir(f"{args.save_dir}/log")
+    try:
+        os.mkdir(f"{args.save_dir}/log")
+    except:
+        pass
 
 # Logging
 logger, run_name = setup_logging(args)
