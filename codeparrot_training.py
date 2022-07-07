@@ -245,10 +245,11 @@ if args.gradient_checkpointing:
 tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
 
 # Move all steps back in
-files = [f for f in os.listdir('.') if 'step_' in f]
-if len(files) > 0:
-    for f in files:
-        shutil.move(f, args.save_dir + '/' + file)
+if accelerator.is_main_process:
+    files = [f for f in os.listdir('.') if 'step_' in f]
+    if len(files) > 0:
+        for f in files:
+            shutil.move(f, args.save_dir + '/' + file)
 
 # Load dataset and dataloader
 if accelerator.is_main_process:
