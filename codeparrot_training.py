@@ -197,6 +197,10 @@ def evaluate(args):
 parser = HfArgumentParser(TrainingArguments)
 args = parser.parse_args()
 
+dirname, filename = os.path.split(os.path.abspath(__file__))
+print(f"Directory of run before accelerator:{dirname}\n")
+print(f"Directory of file before accelerator:{filename}\n")
+
 # Accelerator
 accelerator = Accelerator(log_with=["wandb", "tensorboard"], logging_dir=f"{args.save_dir}/log")
 acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
@@ -206,21 +210,25 @@ samples_per_step = accelerator.state.num_processes * args.train_batch_size
 set_seed(args.seed)
 
 # Trick: Move out any step_checkpoints and move them back in
-possible_ckpts = os.listdir(args.save_dir)
-move = []
-for file_or_folder in possible_ckpts:
-    if 'step_' in file_or_folder and os.path.isdir(file_or_folder):
-        move.append(file_or_folder)
+if accelerator.is_main_process:
+    possible_ckpts = os.listdir(dirname + args.save_dir)
+    print(f"Possible Checkpoints Found:{possible_ckpts}\n", flush=True)
+    move = []
+    for file_or_folder in possible_ckpts:
+        if 'step_' in file_or_folder and os.path.isdir(file_or_folder):
+            move.append(file_or_folder)
 
-# Move out
-for file in move:
-    shutil.move(args.save_dir + '/' + file, f'./{file}')
+    # Move out
+    print(f"Checkpoints to Move:{move}\n", flush=True)
+    for file in move:
+        shutil.move(args.save_dir + '/' + file, f'./{file}')
 
-# Clean
-to_be_del = os.listdir(args.save_dir)
-if len(to_be_del) > 0:
-    for file in to_be_del:
-        shutil.rmtree(args.save_dir + '/' + file)
+    # Clean
+    to_be_del = os.listdir(args.save_dir)
+    print(f"Files to Delete:{to_be_del}\n", flush=True)
+    if len(to_be_del) > 0:
+        for file in to_be_del:
+            shutil.rmtree(args.save_dir + '/' + file)
 
 
 
@@ -245,7 +253,7 @@ tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
 
 # Move ckpts_back_in
 for file in move:
-    shutil.move( f'./{file}', args.save_dir + '/' + file)
+    shutil.move(f'./{file}', args.save_dir + '/' + file)
 
 # Load dataset and dataloader
 if accelerator.is_main_process:
