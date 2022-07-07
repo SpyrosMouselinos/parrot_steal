@@ -98,7 +98,6 @@ class ConstantLengthDataset(IterableDataset):
                     yield torch.tensor(input_ids)
 
 
-
 def setup_logging(args):
     project_name = args.model_ckpt.split("/")[-1]
     logger = logging.getLogger(__name__)
@@ -133,7 +132,8 @@ def create_dataloaders(args):
         tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=True
     )
     valid_dataset = ConstantLengthDataset(
-        tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=False
+        tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized,
+        shuffle_buffer=False
     )
     train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
     eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
@@ -197,38 +197,31 @@ def evaluate(args):
 parser = HfArgumentParser(TrainingArguments)
 args = parser.parse_args()
 
+# Trick: Move out any step_checkpoints
+if os.path.exists(args.save_dir):
+    possible_ckpts = os.listdir(args.save_dir)
+    print(f"Possible Checkpoints Found:{possible_ckpts}\n", flush=True)
+    move = []
+    for file_or_folder in possible_ckpts:
+        if 'step_' in file_or_folder:
+            move.append(file_or_folder)
 
+    # Move out
+    print(f"Checkpoints to Move:{move}\n", flush=True)
+    for file in move:
+        shutil.move(args.save_dir + '/' + file, f'./{file}')
 
-# Accelerator
+    # Clean
+    shutil.rmtree(args.save_dir)
+
+hf_repo = Repository(args.save_dir, clone_from=args.model_ckpt)
+
 accelerator = Accelerator(log_with=["wandb", "tensorboard"], logging_dir=f"{args.save_dir}/log")
 acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
 
 args = Namespace(**vars(args), **acc_state)
 samples_per_step = accelerator.state.num_processes * args.train_batch_size
 set_seed(args.seed)
-
-# Trick: Move out any step_checkpoints
-if accelerator.is_main_process:
-    if os.path.exists(args.save_dir):
-        possible_ckpts = os.listdir(args.save_dir)
-        print(f"Possible Checkpoints Found:{possible_ckpts}\n", flush=True)
-        move = []
-        for file_or_folder in possible_ckpts:
-            if 'step_' in file_or_folder:
-                move.append(file_or_folder)
-
-        # Move out
-        print(f"Checkpoints to Move:{move}\n", flush=True)
-        for file in move:
-            shutil.move(args.save_dir + '/' + file, f'./{file}')
-
-        # Clean
-        shutil.rmtree(args.save_dir)
-
-
-# Clone model repository
-if accelerator.is_main_process:
-    hf_repo = Repository(args.save_dir, clone_from=args.model_ckpt)
 
 # Logging
 logger, run_name = setup_logging(args)
