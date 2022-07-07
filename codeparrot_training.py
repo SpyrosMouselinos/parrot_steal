@@ -218,7 +218,7 @@ if accelerator.is_main_process:
     hf_repo.git_checkout(run_name, create_branch_ok=True)
 
 # Load model and tokenizer
-model = AutoModelForCausalLM.from_pretrained(args.save_dir)
+model = AutoModelForCausalLM.from_pretrained(args.save_dir, torch_dtype="auto")
 if args.gradient_checkpointing:
     model.gradient_checkpointing_enable()
 tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
@@ -305,14 +305,17 @@ for step, batch in enumerate(train_dataloader, start=1):
         loss_tracking = 0
         completed_steps += 1
     if step % args.save_checkpoint_steps == 0:
-        logger.info("Evaluating and saving model checkpoint")
+        logger.info("Evaluating Model")
+        accelerator.wait_for_everyone()
         eval_loss, perplexity = evaluate(args)
         log_metrics(step, {"loss/eval": eval_loss, "perplexity": perplexity})
         accelerator.wait_for_everyone()
+        unwrapped_model = accelerator.unwrap_model(model)
+        unwrapped_model.save_pretrained(args.save_dir, save_function=accelerator.save)
         save_dir = os.path.join(args.save_dir, f"step_{step}")
         accelerator.save_state(save_dir)
         if accelerator.is_main_process:
-            hf_repo.push_to_hub(commit_message=f"step {step}")
+            hf_repo.push_to_hub(commit_message="final model")
         model.train()
     if completed_steps >= args.max_train_steps:
         break
