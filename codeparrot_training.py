@@ -197,7 +197,7 @@ def evaluate(args):
 parser = HfArgumentParser(TrainingArguments)
 args = parser.parse_args()
 
-# Trick: Move out any step_checkpoints
+#Trick: Move out any step_checkpoints
 if os.path.exists(args.save_dir):
     possible_ckpts = os.listdir(args.save_dir)
     print(f"Possible Checkpoints Found:{possible_ckpts}\n", flush=True)
@@ -237,12 +237,6 @@ if args.gradient_checkpointing:
     model.gradient_checkpointing_enable()
 tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
 
-# Move all steps back in
-if accelerator.is_main_process:
-    files = [f for f in os.listdir('.') if 'step_' in f]
-    if len(files) > 0:
-        for f in files:
-            shutil.move(f, args.save_dir + '/' + file)
 
 # Load dataset and dataloader
 if accelerator.is_main_process:
