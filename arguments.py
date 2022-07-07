@@ -20,8 +20,8 @@ class TrainingArguments:
     dataset_name_valid: Optional[str] = field(
         default="lvwerra/codeparrot-clean-valid", metadata={"help": "Name or path of validation dataset."}
     )
-    train_batch_size: Optional[int] = field(default=32, metadata={"help": "Batch size for training."})
-    valid_batch_size: Optional[int] = field(default=32, metadata={"help": "Batch size for evaluation."})
+    train_batch_size: Optional[int] = field(default=4, metadata={"help": "Batch size for training."})
+    valid_batch_size: Optional[int] = field(default=4, metadata={"help": "Batch size for evaluation."})
     weight_decay: Optional[float] = field(default=0.1, metadata={"help": "Value of weight decay."})
     shuffle_buffer: Optional[int] = field(
         default=-1, metadata={"help": "Size of buffer used to shuffle streaming dataset."}
@@ -32,7 +32,7 @@ class TrainingArguments:
         default=1000, metadata={"help": "Number of warmup steps in the learning rate schedule."}
     )
     gradient_accumulation_steps: Optional[int] = field(
-        default=8, metadata={"help": "Number of gradient accumulation steps."}
+            default=16, metadata={"help": "Number of gradient accumulation steps."}
     )
     gradient_checkpointing: Optional[bool] = field(
         default=True, metadata={"help": "Use gradient checkpointing to reduce memory footprint."}
