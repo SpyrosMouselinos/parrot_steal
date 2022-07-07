@@ -207,25 +207,23 @@ args = Namespace(**vars(args), **acc_state)
 samples_per_step = accelerator.state.num_processes * args.train_batch_size
 set_seed(args.seed)
 
-# Trick: Move out any step_checkpoints and move them back in
+# Trick: Move out any step_checkpoints
 if accelerator.is_main_process:
-    possible_ckpts = os.listdir(args.save_dir)
-    print(f"Possible Checkpoints Found:{possible_ckpts}\n", flush=True)
-    move = []
-    for file_or_folder in possible_ckpts:
-        if 'step_' in file_or_folder:
-            move.append(file_or_folder)
+    if os.path.exists(args.save_dir):
+        possible_ckpts = os.listdir(args.save_dir)
+        print(f"Possible Checkpoints Found:{possible_ckpts}\n", flush=True)
+        move = []
+        for file_or_folder in possible_ckpts:
+            if 'step_' in file_or_folder:
+                move.append(file_or_folder)
 
-    # Move out
-    print(f"Checkpoints to Move:{move}\n", flush=True)
-    for file in move:
-        shutil.move(args.save_dir + '/' + file, f'./{file}')
+        # Move out
+        print(f"Checkpoints to Move:{move}\n", flush=True)
+        for file in move:
+            shutil.move(args.save_dir + '/' + file, f'./{file}')
 
-    # Clean
-    shutil.rmtree(args.save_dir)
-    os.mkdir(args.save_dir)
-
-
+        # Clean
+        shutil.rmtree(args.save_dir)
 
 
 # Clone model repository
@@ -246,13 +244,11 @@ if args.gradient_checkpointing:
     model.gradient_checkpointing_enable()
 tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
 
-# Move ckpts_back_in
-if accelerator.is_main_process:
-    move = os.listdir('.')
-    move = [f for f in move if 'step' in f]
-    print("Moving back: {move}", flush=True)
-    for file in move:
-        shutil.move(f'./{file}', args.save_dir + '/' + file)
+# Move all steps back in
+files = [f for f in os.listdir('.') if 'step_' in f]
+if len(files) > 0:
+    for f in files:
+        shutil.move(f, args.save_dir + '/' + file)
 
 # Load dataset and dataloader
 if accelerator.is_main_process:
