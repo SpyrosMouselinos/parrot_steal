@@ -211,7 +211,7 @@ set_seed(args.seed)
 
 # Trick: Move out any step_checkpoints and move them back in
 if accelerator.is_main_process:
-    possible_ckpts = os.listdir(dirname + args.save_dir)
+    possible_ckpts = os.listdir(args.save_dir)
     print(f"Possible Checkpoints Found:{possible_ckpts}\n", flush=True)
     move = []
     for file_or_folder in possible_ckpts:
