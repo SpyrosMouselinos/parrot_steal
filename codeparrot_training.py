@@ -253,7 +253,7 @@ if accelerator.is_main_process:
     files = [f for f in os.listdir('.') if 'step_' in f]
     if len(files) > 0:
         for f in files:
-            shutil.move(f, args.save_dir + '/' + file)
+            shutil.move(f, args.save_dir + '/' + f)
 
 # Load dataset and dataloader
 if accelerator.is_main_process:
