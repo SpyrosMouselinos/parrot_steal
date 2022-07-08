@@ -14,7 +14,7 @@ from torch.optim import AdamW
 from torch.utils.data import IterableDataset
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.datapipes.iter.combinatorics import ShufflerIterDataPipe
-
+import sys
 import shutil
 import transformers
 from accelerate import Accelerator, DistributedType
@@ -229,10 +229,6 @@ if accelerator.is_main_process:
 # Clone model repository
 if accelerator.is_main_process:
     hf_repo = Repository(args.save_dir, clone_from=args.model_ckpt)
-    try:
-        os.mkdir(f"{args.save_dir}/log")
-    except:
-        pass
 
 # Logging
 logger, run_name = setup_logging(args)
@@ -281,6 +277,17 @@ model.train()
 model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
     model, optimizer, train_dataloader, eval_dataloader
 )
+
+logger.info("Evaluating and saving model checkpoint")
+eval_loss, perplexity = evaluate(args)
+log_metrics(1995, {"loss/eval": eval_loss, "perplexity": perplexity})
+accelerator.wait_for_everyone()
+save_dir = os.path.join(args.save_dir, f"step_{1995}")
+accelerator.save_state(save_dir)
+if accelerator.is_main_process:
+    hf_repo.push_to_hub(commit_message=f"step {1995}")
+model.train()
+sys.exit(1)
 
 # load in the weights and states from a previous save
 if args.resume_from_checkpoint:
