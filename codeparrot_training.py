@@ -279,8 +279,7 @@ model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
 )
 
 logger.info("Evaluating and saving model checkpoint")
-eval_loss, perplexity = evaluate(args)
-log_metrics(1995, {"loss/eval": eval_loss, "perplexity": perplexity})
+log_metrics(1995, {"loss/eval": 0, "perplexity": 0})
 accelerator.wait_for_everyone()
 save_dir = os.path.join(args.save_dir, f"step_{1995}")
 accelerator.save_state(save_dir)
