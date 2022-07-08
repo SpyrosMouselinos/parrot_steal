@@ -209,21 +209,22 @@ set_seed(args.seed)
 
 # Trick: Move out any step_checkpoints
 if accelerator.is_main_process:
-    if os.path.exists(args.save_dir):
-        possible_ckpts = os.listdir(args.save_dir)
-        print(f"Possible Checkpoints Found:{possible_ckpts}\n", flush=True)
-        move = []
-        for file_or_folder in possible_ckpts:
-            if 'step_' in file_or_folder:
-                move.append(file_or_folder)
+    if args.purge_save_dir:
+        if os.path.exists(args.save_dir):
+            possible_ckpts = os.listdir(args.save_dir)
+            print(f"Possible Checkpoints Found:{possible_ckpts}\n", flush=True)
+            move = []
+            for file_or_folder in possible_ckpts:
+                if 'step_' in file_or_folder:
+                    move.append(file_or_folder)
 
-        # Move out
-        print(f"Checkpoints to Move:{move}\n", flush=True)
-        for file in move:
-            shutil.move(args.save_dir + '/' + file, f'./{file}')
+            # Move out
+            print(f"Checkpoints to Move:{move}\n", flush=True)
+            for file in move:
+                shutil.move(args.save_dir + '/' + file, f'./{file}')
 
-        # Clean
-        shutil.rmtree(args.save_dir)
+            # Clean
+            shutil.rmtree(args.save_dir)
 
 
 # Clone model repository

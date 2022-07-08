@@ -7,7 +7,9 @@ class TrainingArguments:
     """
     Configuration for training model.
     """
-
+    purge_save_dir: Optional[bool] = field(
+        default=True, metadata={"help": "Whether to purge the save_dir before running the script."}
+    )
     model_ckpt: Optional[str] = field(
         default="https://huggingface.co/BlazeLlama/piwpaw_medium", metadata={"help": "Model name or path of model to be trained."}
     )
