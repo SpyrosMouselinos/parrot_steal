@@ -278,15 +278,6 @@ model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
     model, optimizer, train_dataloader, eval_dataloader
 )
 
-logger.info("Evaluating and saving model checkpoint")
-log_metrics(1995, {"loss/eval": 0, "perplexity": 0})
-accelerator.wait_for_everyone()
-save_dir = os.path.join(args.save_dir, f"step_{1995}")
-accelerator.save_state(save_dir)
-if accelerator.is_main_process:
-    hf_repo.push_to_hub(commit_message=f"step {1995}")
-model.train()
-sys.exit(1)
 
 # load in the weights and states from a previous save
 if args.resume_from_checkpoint:
