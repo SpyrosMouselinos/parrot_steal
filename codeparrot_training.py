@@ -108,6 +108,7 @@ def setup_logging(args):
             pass
         else:
             os.mkdir(log_dir)
+    accelerator.wait_for_everyone()
     filename = f"debug_{accelerator.process_index}.log"
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
