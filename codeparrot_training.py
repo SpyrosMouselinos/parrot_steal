@@ -102,14 +102,18 @@ class ConstantLengthDataset(IterableDataset):
 def setup_logging(args):
     project_name = args.model_ckpt.split("/")[-1]
     logger = logging.getLogger(__name__)
-    log_dir = Path(args.save_dir) / "log/"
-    log_dir.mkdir(exist_ok=True)
+    log_dir = args.save_dir + "/log"
+    if accelerator.is_main_process:
+        if os.path.exists(log_dir):
+            pass
+        else:
+            os.mkdir(log_dir)
     filename = f"debug_{accelerator.process_index}.log"
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
         level=logging.INFO,
-        handlers=[logging.FileHandler(log_dir / filename), logging.StreamHandler()],
+        handlers=[logging.FileHandler(log_dir + '/' + filename), logging.StreamHandler()],
     )
     if accelerator.is_main_process:  # we only want to setup logging once
         accelerator.init_trackers(project_name, vars(args))
@@ -206,7 +210,9 @@ acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
 args = Namespace(**vars(args), **acc_state)
 samples_per_step = accelerator.state.num_processes * args.train_batch_size
 set_seed(args.seed)
-
+########################
+setup_logging(args)
+###########################
 # Trick: Move out any step_checkpoints
 if accelerator.is_main_process:
     if args.purge_save_dir:
