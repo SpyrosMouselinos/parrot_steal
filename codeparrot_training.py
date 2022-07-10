@@ -104,12 +104,14 @@ def setup_logging(args):
     logger = logging.getLogger(__name__)
     log_dir = args.save_dir + "/log"
     if accelerator.is_main_process:
-        if os.path.exists(log_dir):
-            pass
+        if os.path.exists(args.save_dir):
+            if os.path.exists(log_dir):
+                pass
+            else:
+                os.makedirs(log_dir, exist_ok=True)
         else:
-            print(f"Thread:{accelerator.process_index}", flush=True)
-            print(os.listdir('.'), flush=True)
-            os.mkdir(log_dir)
+            os.makedirs(args.save_dir, exist_ok=True)
+            os.makedirs(log_dir, exist_ok=True)
     accelerator.wait_for_everyone()
     filename = f"debug_{accelerator.process_index}.log"
     logging.basicConfig(
