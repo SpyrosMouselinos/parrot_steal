@@ -107,6 +107,8 @@ def setup_logging(args):
         if os.path.exists(log_dir):
             pass
         else:
+            print(f"Thread:{accelerator.process_index}", flush=True)
+            print(os.listdir('.'), flush=True)
             os.mkdir(log_dir)
     accelerator.wait_for_everyone()
     filename = f"debug_{accelerator.process_index}.log"
