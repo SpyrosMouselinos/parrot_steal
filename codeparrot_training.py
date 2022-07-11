@@ -72,8 +72,11 @@ class ConstantLengthDataset(IterableDataset):
                 if buffer_len >= self.max_buffer_size:
                     break
                 try:
-                    buffer.append(next(iterator)[self.content_field])
+                    next_item = next(iterator)[self.content_field]
+                    buffer.append(next_item)
                     buffer_len += len(buffer[-1])
+                    if not next_item:
+                        raise StopIteration
                 except StopIteration:
                     if self.infinite:
                         iterator = iter(self.dataset)
@@ -85,13 +88,7 @@ class ConstantLengthDataset(IterableDataset):
             if self.tokenized:
                 tokenized_inputs = buffer
             else:
-                try:
-                    tokenized_inputs = self.tokenizer(buffer, truncation=False)["input_ids"]
-                except:
-                    print("#######################")
-                    print(f"Error detected at {accelerator.process_index}\n", flush=True)
-                    print(f"Buffer: {buffer}\n", flush=True)
-                    print("#######################")
+                tokenized_inputs = self.tokenizer(buffer, truncation=False)["input_ids"]
             all_token_ids = []
             if self.shuffle_buffer:
                 random.shuffle(tokenized_inputs)
@@ -141,19 +138,18 @@ def setup_logging(args):
 
 def create_dataloaders(args):
     ds_kwargs = {"streaming": True}
-    # train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
+    train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
     valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
-    # train_dataset = ConstantLengthDataset(
-    #    tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=True
-    # )
+    train_dataset = ConstantLengthDataset(
+        tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=True
+    )
     valid_dataset = ConstantLengthDataset(
         tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized,
         shuffle_buffer=False
     )
-    # train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
     eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
-    # return train_dataloader, eval_dataloader
-    return None, eval_dataloader
+    return train_dataloader, eval_dataloader
 
 
 def get_grouped_params(model, args, no_decay=["bias", "ln_1.weight", "ln_2.weight", "ln_f.weight"]):
