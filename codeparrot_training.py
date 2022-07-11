@@ -215,9 +215,7 @@ acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
 args = Namespace(**vars(args), **acc_state)
 samples_per_step = accelerator.state.num_processes * args.train_batch_size
 set_seed(args.seed)
-########################
-setup_logging(args)
-###########################
+
 # Trick: Move out any step_checkpoints
 if accelerator.is_main_process:
     if args.purge_save_dir:
