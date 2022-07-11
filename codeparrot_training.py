@@ -72,11 +72,8 @@ class ConstantLengthDataset(IterableDataset):
                 if buffer_len >= self.max_buffer_size:
                     break
                 try:
-                    next_item = next(iterator)[self.content_field]
-                    buffer.append(next_item)
+                    buffer.append(next(iterator)[self.content_field])
                     buffer_len += len(buffer[-1])
-                    if not next_item:
-                        raise StopIteration
                 except StopIteration:
                     if self.infinite:
                         iterator = iter(self.dataset)
@@ -136,20 +133,26 @@ def setup_logging(args):
     return logger, run_name
 
 
-def create_dataloaders(args):
+def create_dataloaders(args, mode='train'):
     ds_kwargs = {"streaming": True}
-    train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
-    valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
-    train_dataset = ConstantLengthDataset(
-        tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=True
-    )
-    valid_dataset = ConstantLengthDataset(
-        tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized,
-        shuffle_buffer=False
-    )
-    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
-    eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
-    return train_dataloader, eval_dataloader
+    if mode == 'train':
+        train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
+
+        train_dataset = ConstantLengthDataset(
+            tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized,
+            shuffle_buffer=True
+        )
+        train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
+        return train_dataloader
+    else:
+        valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
+        valid_dataset = ConstantLengthDataset(
+            tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized,
+            shuffle_buffer=False
+        )
+
+        eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
+        return eval_dataloader
 
 
 def get_grouped_params(model, args, no_decay=["bias", "ln_1.weight", "ln_2.weight", "ln_f.weight"]):
@@ -188,20 +191,26 @@ def compute_tflops(elapsed_time, accelerator, args):
 
 def evaluate(args):
     model.eval()
+    eval_dataloader = create_dataloaders(args, mode='eval')
+    eval_dataloader = accelerator.prepare(eval_dataloader)
     losses = []
     for step, batch in enumerate(eval_dataloader):
-        with torch.no_grad():
-            outputs = model(batch, labels=batch)
-        loss = outputs.loss.repeat(args.valid_batch_size)
-        losses.append(accelerator.gather(loss))
-        if args.max_eval_steps > 0 and step >= args.max_eval_steps:
-            break
-    losses = torch.cat(losses)
-    loss = losses[: eval_dataloader.dataset.current_size].mean()
-    try:
-        perplexity = torch.exp(loss)
-    except OverflowError:
-        perplexity = float("inf")
+    #     with torch.no_grad():
+    #         outputs = model(batch, labels=batch)
+    #     loss = outputs.loss.repeat(args.valid_batch_size)
+    #     losses.append(accelerator.gather(loss))
+    #     if args.max_eval_steps > 0 and step >= args.max_eval_steps:
+    #         break
+    # losses = torch.cat(losses)
+    # loss = losses[: eval_dataloader.dataset.current_size].mean()
+    # try:
+    #     perplexity = torch.exp(loss)
+    # except OverflowError:
+    #     perplexity = float("inf")
+        pass
+
+    accelerator.wait_for_everyone()
+    del eval_dataloader
     return loss.item(), perplexity.item()
 
 
@@ -216,20 +225,6 @@ acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
 args = Namespace(**vars(args), **acc_state)
 samples_per_step = accelerator.state.num_processes * args.train_batch_size
 set_seed(args.seed)
-
-################## DEBUG #############################
-tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
-train_dataloader, eval_dataloader = create_dataloaders(args)
-eval_dataloader = accelerator.prepare(eval_dataloader)
-for run in range(0, 3):
-    print(f"Run: {accelerator.process_index} / {run}\n", flush=True)
-    for idx, x in enumerate(eval_dataloader):
-        print(f"Idx: {accelerator.process_index} / {idx}\n", flush=True)
-        pass
-accelerator.wait_for_everyone()
-sys.exit(1)
-######################################################
-
 
 # Trick: Move out any step_checkpoints
 if accelerator.is_main_process:
@@ -275,7 +270,8 @@ if accelerator.is_main_process:
         for f in files:
             shutil.move(f, args.save_dir + '/' + f)
 
-train_dataloader, eval_dataloader = create_dataloaders(args)
+
+train_dataloader = create_dataloaders(args, mode='train')
 
 # Prepare the optimizer and learning rate scheduler
 optimizer = AdamW(get_grouped_params(model, args), lr=args.learning_rate)
@@ -295,10 +291,12 @@ def get_lr():
 # Train model
 model.train()
 # Prepare everything with our `accelerator`.
-model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
-    model, optimizer, train_dataloader, eval_dataloader
+model, optimizer, train_dataloader = accelerator.prepare(
+    model, optimizer, train_dataloader
 )
-
+eval_loss, perplexity = evaluate(args)
+eval_loss, perplexity = evaluate(args)
+eval_loss, perplexity = evaluate(args)
 # load in the weights and states from a previous save
 if args.resume_from_checkpoint:
     if args.resume_from_checkpoint is not None or args.resume_from_checkpoint != "":
