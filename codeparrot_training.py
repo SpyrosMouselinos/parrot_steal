@@ -224,11 +224,14 @@ set_seed(args.seed)
 ################## DEBUG #############################
 tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
 train_dataloader, eval_dataloader = create_dataloaders(args)
+eval_dataloader = accelerator.prepare(eval_dataloader)
 for run in range(0, 3):
     print(f"Run: {accelerator.process_index} / {run}\n", flush=True)
     for idx, x in enumerate(eval_dataloader):
         print(f"Idx: {accelerator.process_index} / {idx}\n", flush=True)
         pass
+accelerator.wait_for_everyone()
+sys.exit(1)
 ######################################################
 
 
