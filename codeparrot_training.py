@@ -211,7 +211,7 @@ def evaluate(args):
 
     accelerator.wait_for_everyone()
     del eval_dataloader
-    return loss.item(), perplexity.item()
+    return None, None
 
 
 # Settings
