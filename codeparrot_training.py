@@ -98,7 +98,6 @@ class ConstantLengthDataset(IterableDataset):
                     yield torch.tensor(input_ids)
 
 
-
 def setup_logging(args):
     project_name = args.model_ckpt.split("/")[-1]
     logger = logging.getLogger(__name__)
@@ -134,19 +133,26 @@ def setup_logging(args):
     return logger, run_name
 
 
-def create_dataloaders(args):
+def create_dataloaders(args, mode='train'):
     ds_kwargs = {"streaming": True}
-    train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
-    valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
-    train_dataset = ConstantLengthDataset(
-        tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=True
-    )
-    valid_dataset = ConstantLengthDataset(
-        tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=False
-    )
-    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
-    eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
-    return train_dataloader, eval_dataloader
+    if mode == 'train':
+        train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
+
+        train_dataset = ConstantLengthDataset(
+            tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized,
+            shuffle_buffer=True
+        )
+        train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
+        return train_dataloader
+    else:
+        valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
+        valid_dataset = ConstantLengthDataset(
+            tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized,
+            shuffle_buffer=False
+        )
+
+        eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
+        return eval_dataloader
 
 
 def get_grouped_params(model, args, no_decay=["bias", "ln_1.weight", "ln_2.weight", "ln_f.weight"]):
@@ -185,6 +191,8 @@ def compute_tflops(elapsed_time, accelerator, args):
 
 def evaluate(args):
     model.eval()
+    eval_dataloader = create_dataloaders(args, mode='eval')
+    eval_dataloader = accelerator.prepare(eval_dataloader)
     losses = []
     for step, batch in enumerate(eval_dataloader):
         with torch.no_grad():
@@ -199,14 +207,15 @@ def evaluate(args):
         perplexity = torch.exp(loss)
     except OverflowError:
         perplexity = float("inf")
+
+    accelerator.wait_for_everyone()
+    del eval_dataloader
     return loss.item(), perplexity.item()
 
 
 # Settings
 parser = HfArgumentParser(TrainingArguments)
 args = parser.parse_args()
-
-
 
 # Accelerator
 accelerator = Accelerator(log_with=["wandb", "tensorboard"], logging_dir=f"{args.save_dir}/log")
@@ -235,7 +244,6 @@ if accelerator.is_main_process:
             # Clean
             shutil.rmtree(args.save_dir)
 
-
 # Clone model repository
 if accelerator.is_main_process:
     hf_repo = Repository(args.save_dir, clone_from=args.model_ckpt)
@@ -261,10 +269,8 @@ if accelerator.is_main_process:
         for f in files:
             shutil.move(f, args.save_dir + '/' + f)
 
-# Load dataset and dataloader
-if accelerator.is_main_process:
-    print("Creating DLoaders", flush=True)
-train_dataloader, eval_dataloader = create_dataloaders(args)
+
+train_dataloader = create_dataloaders(args, mode='train')
 
 # Prepare the optimizer and learning rate scheduler
 optimizer = AdamW(get_grouped_params(model, args), lr=args.learning_rate)
@@ -284,10 +290,9 @@ def get_lr():
 # Train model
 model.train()
 # Prepare everything with our `accelerator`.
-model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
-    model, optimizer, train_dataloader, eval_dataloader
+model, optimizer, train_dataloader = accelerator.prepare(
+    model, optimizer, train_dataloader
 )
-
 
 # load in the weights and states from a previous save
 if args.resume_from_checkpoint:
