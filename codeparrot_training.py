@@ -85,7 +85,13 @@ class ConstantLengthDataset(IterableDataset):
             if self.tokenized:
                 tokenized_inputs = buffer
             else:
-                tokenized_inputs = self.tokenizer(buffer, truncation=False)["input_ids"]
+                try:
+                    tokenized_inputs = self.tokenizer(buffer, truncation=False)["input_ids"]
+                except:
+                    print("#######################")
+                    print(f"Error detected at {accelerator.process_index}\n", flush=True)
+                    print(f"Buffer: {buffer}\n", flush=True)
+                    print("#######################")
             all_token_ids = []
             if self.shuffle_buffer:
                 random.shuffle(tokenized_inputs)
@@ -96,7 +102,6 @@ class ConstantLengthDataset(IterableDataset):
                 if len(input_ids) == self.seq_length:
                     self.current_size += 1
                     yield torch.tensor(input_ids)
-
 
 
 def setup_logging(args):
@@ -136,17 +141,19 @@ def setup_logging(args):
 
 def create_dataloaders(args):
     ds_kwargs = {"streaming": True}
-    train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
+    # train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
     valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
-    train_dataset = ConstantLengthDataset(
-        tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=True
-    )
+    # train_dataset = ConstantLengthDataset(
+    #    tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=True
+    # )
     valid_dataset = ConstantLengthDataset(
-        tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized, shuffle_buffer=False
+        tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized,
+        shuffle_buffer=False
     )
-    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
+    # train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
     eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
-    return train_dataloader, eval_dataloader
+    # return train_dataloader, eval_dataloader
+    return None, eval_dataloader
 
 
 def get_grouped_params(model, args, no_decay=["bias", "ln_1.weight", "ln_2.weight", "ln_f.weight"]):
@@ -206,8 +213,6 @@ def evaluate(args):
 parser = HfArgumentParser(TrainingArguments)
 args = parser.parse_args()
 
-
-
 # Accelerator
 accelerator = Accelerator(log_with=["wandb", "tensorboard"], logging_dir=f"{args.save_dir}/log")
 acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
@@ -215,6 +220,17 @@ acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
 args = Namespace(**vars(args), **acc_state)
 samples_per_step = accelerator.state.num_processes * args.train_batch_size
 set_seed(args.seed)
+
+################## DEBUG #############################
+tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
+train_dataloader, eval_dataloader = create_dataloaders(args)
+for run in range(0, 3):
+    print(f"Run: {accelerator.process_index} / {run}\n", flush=True)
+    for idx, x in enumerate(eval_dataloader):
+        print(f"Idx: {accelerator.process_index} / {idx}\n", flush=True)
+        pass
+######################################################
+
 
 # Trick: Move out any step_checkpoints
 if accelerator.is_main_process:
@@ -234,7 +250,6 @@ if accelerator.is_main_process:
 
             # Clean
             shutil.rmtree(args.save_dir)
-
 
 # Clone model repository
 if accelerator.is_main_process:
@@ -261,9 +276,6 @@ if accelerator.is_main_process:
         for f in files:
             shutil.move(f, args.save_dir + '/' + f)
 
-# Load dataset and dataloader
-if accelerator.is_main_process:
-    print("Creating DLoaders", flush=True)
 train_dataloader, eval_dataloader = create_dataloaders(args)
 
 # Prepare the optimizer and learning rate scheduler
@@ -287,7 +299,6 @@ model.train()
 model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
     model, optimizer, train_dataloader, eval_dataloader
 )
-
 
 # load in the weights and states from a previous save
 if args.resume_from_checkpoint:
