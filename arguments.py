@@ -168,7 +168,7 @@ class InitializationArguments:
         default="custom-medium", metadata={"help": "Configuration to use for model initialization."}
     )
     tokenizer_name: Optional[str] = field(
-        default="BlazeLlama/piwpaw_medium", metadata={"help": "Tokenizer attached to model."}
+        default="BlazeLlama/warmut", metadata={"help": "Tokenizer attached to model."}
     )
-    model_name: Optional[str] = field(default="BlazeLlama/piwpaw_medium", metadata={"help": "Name of the created model."})
+    model_name: Optional[str] = field(default="BlazeLlama/warmut", metadata={"help": "Name of the created model."})
     push_to_hub: Optional[bool] = field(default=True, metadata={"help": "Push saved tokenizer to the hub."})
