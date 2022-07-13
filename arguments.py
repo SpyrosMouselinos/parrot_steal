@@ -39,14 +39,14 @@ class TrainingArguments:
     gradient_checkpointing: Optional[bool] = field(
         default=True, metadata={"help": "Use gradient checkpointing to reduce memory footprint."}
     )
-    max_train_steps: Optional[int] = field(default=23_000, metadata={"help": "Maximum number of training steps."})
+    max_train_steps: Optional[int] = field(default=250_000, metadata={"help": "Maximum number of training steps."})
     max_eval_steps: Optional[int] = field(
         default=-1, metadata={"help": "Maximum number of evaluation steps. If -1 the full dataset is evaluated."}
     )
     seq_length: Optional[int] = field(default=1024, metadata={"help": "Sequence lengths used for training."})
     seed: Optional[int] = field(default=1, metadata={"help": "Training seed."})
     save_checkpoint_steps: Optional[int] = field(
-        default=1000,
+        default=5000,
         metadata={"help": "Interval to save checkpoints. Measured as number of forward passes not training steps."},
     )
     resume_from_checkpoint: Optional[str] = field(
