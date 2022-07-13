@@ -11,7 +11,7 @@ class TrainingArguments:
         default=True, metadata={"help": "Whether to purge the save_dir before running the script."}
     )
     model_ckpt: Optional[str] = field(
-        default="https://huggingface.co/BlazeLlama/piwpaw_medium", metadata={"help": "Model name or path of model to be trained."}
+        default="https://huggingface.co/BlazeLlama/warmut", metadata={"help": "Model name or path of model to be trained."}
     )
     save_dir: Optional[str] = field(
         default="./models", metadata={"help": "Save dir where model repo is cloned and models updates are saved to."}
@@ -22,24 +22,24 @@ class TrainingArguments:
     dataset_name_valid: Optional[str] = field(
         default="lvwerra/codeparrot-clean-valid", metadata={"help": "Name or path of validation dataset."}
     )
-    train_batch_size: Optional[int] = field(default=4, metadata={"help": "Batch size for training."})
-    valid_batch_size: Optional[int] = field(default=2, metadata={"help": "Batch size for evaluation."})
+    train_batch_size: Optional[int] = field(default=12, metadata={"help": "Batch size for training."})
+    valid_batch_size: Optional[int] = field(default=12, metadata={"help": "Batch size for evaluation."})
     weight_decay: Optional[float] = field(default=0.1, metadata={"help": "Value of weight decay."})
     shuffle_buffer: Optional[int] = field(
         default=-1, metadata={"help": "Size of buffer used to shuffle streaming dataset."}
     )
-    learning_rate: Optional[float] = field(default=2e-4, metadata={"help": "Learning rate fo training."})
+    learning_rate: Optional[float] = field(default=5e-4, metadata={"help": "Learning rate fo training."})
     lr_scheduler_type: Optional[str] = field(default="cosine", metadata={"help": "Learning rate."})
     num_warmup_steps: Optional[int] = field(
-        default=650, metadata={"help": "Number of warmup steps in the learning rate schedule."}
+        default=2000, metadata={"help": "Number of warmup steps in the learning rate schedule."}
     )
     gradient_accumulation_steps: Optional[int] = field(
-            default=256, metadata={"help": "Number of gradient accumulation steps."}
+            default=4, metadata={"help": "Number of gradient accumulation steps."}
     )
     gradient_checkpointing: Optional[bool] = field(
         default=True, metadata={"help": "Use gradient checkpointing to reduce memory footprint."}
     )
-    max_train_steps: Optional[int] = field(default=25_000, metadata={"help": "Maximum number of training steps."})
+    max_train_steps: Optional[int] = field(default=150_000, metadata={"help": "Maximum number of training steps."})
     max_eval_steps: Optional[int] = field(
         default=-1, metadata={"help": "Maximum number of evaluation steps. If -1 the full dataset is evaluated."}
     )
@@ -62,12 +62,12 @@ class EvaluationArguments:
     """
 
     model_ckpt: Optional[str] = field(
-        default="BlazeLlama/piwpaw_medium", metadata={"help": "Model name or path of model to be evaluated."}
+        default="BlazeLlama/warmut", metadata={"help": "Model name or path of model to be evaluated."}
     )
     dataset_name: Optional[str] = field(
         default="lvwerra/codeparrot-clean-valid", metadata={"help": "Name or path of validation dataset."}
     )
-    batch_size: Optional[int] = field(default=2, metadata={"help": "Batch size used for evaluation."})
+    batch_size: Optional[int] = field(default=12, metadata={"help": "Batch size used for evaluation."})
     max_eval_steps: Optional[int] = field(
         default=-1, metadata={"help": "Maximum number of evaluation steps. If -1 the full dataset is evaluated."}
     )
@@ -136,7 +136,7 @@ class TokenizerTrainingArguments:
     n_examples: Optional[int] = field(
         default=32768, metadata={"help": "Number of examples to train the tokenizer on."}
     )
-    tokenizer_name: Optional[str] = field(default="BlazeLlama/piwpaw_medium", metadata={"help": "Name of new tokenizer."})
+    tokenizer_name: Optional[str] = field(default="BlazeLlama/warmut", metadata={"help": "Name of new tokenizer."})
     push_to_hub: Optional[bool] = field(default=True, metadata={"help": "Push saved tokenizer to the hub."})
 
 

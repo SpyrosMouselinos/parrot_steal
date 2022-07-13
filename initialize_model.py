@@ -13,9 +13,9 @@ tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
 config_kwargs = {
     "vocab_size": len(tokenizer),
     "n_positions": 1024,
-    "n_embd": 1024,
-    "n_layer": 20,
-    "n_head": 16,
+    "n_embd": 512,
+    "n_layer": 8,
+    "n_head": 8,
     "scale_attn_by_inverse_layer_idx": True,
     "reorder_and_upcast_attn": True,
     "bos_token_id": 2,
