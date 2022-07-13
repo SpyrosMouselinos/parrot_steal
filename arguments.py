@@ -28,25 +28,25 @@ class TrainingArguments:
     shuffle_buffer: Optional[int] = field(
         default=-1, metadata={"help": "Size of buffer used to shuffle streaming dataset."}
     )
-    learning_rate: Optional[float] = field(default=3e-4, metadata={"help": "Learning rate fo training."})
+    learning_rate: Optional[float] = field(default=2e-4, metadata={"help": "Learning rate fo training."})
     lr_scheduler_type: Optional[str] = field(default="cosine", metadata={"help": "Learning rate."})
     num_warmup_steps: Optional[int] = field(
-        default=1000, metadata={"help": "Number of warmup steps in the learning rate schedule."}
+        default=650, metadata={"help": "Number of warmup steps in the learning rate schedule."}
     )
     gradient_accumulation_steps: Optional[int] = field(
-            default=16, metadata={"help": "Number of gradient accumulation steps."}
+            default=256, metadata={"help": "Number of gradient accumulation steps."}
     )
     gradient_checkpointing: Optional[bool] = field(
         default=True, metadata={"help": "Use gradient checkpointing to reduce memory footprint."}
     )
-    max_train_steps: Optional[int] = field(default=250_000, metadata={"help": "Maximum number of training steps."})
+    max_train_steps: Optional[int] = field(default=25_000, metadata={"help": "Maximum number of training steps."})
     max_eval_steps: Optional[int] = field(
         default=-1, metadata={"help": "Maximum number of evaluation steps. If -1 the full dataset is evaluated."}
     )
     seq_length: Optional[int] = field(default=1024, metadata={"help": "Sequence lengths used for training."})
     seed: Optional[int] = field(default=1, metadata={"help": "Training seed."})
     save_checkpoint_steps: Optional[int] = field(
-        default=5000,
+        default=1000,
         metadata={"help": "Interval to save checkpoints. Measured as number of forward passes not training steps."},
     )
     resume_from_checkpoint: Optional[str] = field(
